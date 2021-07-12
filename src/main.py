@@ -251,7 +251,7 @@ class CLSTM_cell(pl.LightningModule):
 
         self.dropout_rate = dropout_rate
 
-    def forward(self, inputs=None, hidden_state=None, seq_len=10):
+    def forward(self, inputs=None, hidden_state=None, seq_len=10, device=torch.device('cuda:0')):
         """
         inputs is of size (S, B, C, H, W)
         hidden state is of size (B, C_new, H, W)
@@ -262,9 +262,9 @@ class CLSTM_cell(pl.LightningModule):
         # if hidden_state is None, initialize it with zeros
         if hidden_state is None:
             hx = torch.zeros(inputs.size(1), self.num_features, self.shape[0],
-                             self.shape[1])
+                             self.shape[1]).to(device)
             cx = torch.zeros(inputs.size(1), self.num_features, self.shape[0],
-                             self.shape[1])
+                             self.shape[1]).to(device)
         else:
             hx, cx = hidden_state
 
@@ -280,7 +280,7 @@ class CLSTM_cell(pl.LightningModule):
         for index in range(seq_len):
             if inputs is None:
                 x = torch.zeros(hx.size(0), self.input_channels, self.shape[0],
-                                self.shape[1])
+                                self.shape[1]).to(device)
             else:
                 x = inputs[index, ...]
 
