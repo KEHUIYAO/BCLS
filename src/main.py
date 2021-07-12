@@ -553,7 +553,6 @@ class LightningConvLstm(pl.LightningModule):
 
         # logging using tensorboard logger
         self.logger.experiment.add_scalar('Loss/Validation', avg_loss, self.current_epoch)
-        print(avg_loss)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -568,13 +567,13 @@ class LightningConvLstm(pl.LightningModule):
 
 
 # train
-encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0.1),
-                CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0.1),
-                CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0.1)]
-decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0.1),
-                CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0.1),
-                CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0.1)]
-output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=0.1)
+encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0),
+                CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0),
+                CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0)]
+decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0),
+                CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0),
+                CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0)]
+output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=0)
 #
 # encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=0.25)]
 # decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=0.25)]
