@@ -1,0 +1,12 @@
+name: pytorch-gpu
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - matplotlib
+  - cudatoolkit=10.2
+  - python=3.7
+  - pytorch::pytorch=1.5
+  - pytorch::torchvision=0.6
+  - pytorch-lightning
