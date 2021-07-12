@@ -567,13 +567,13 @@ class LightningConvLstm(pl.LightningModule):
 
 
 # train
-encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0),
-                CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0),
-                CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0)]
-decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0),
-                CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0),
-                CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0)]
-output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=0)
+encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0.1),
+                CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0.1),
+                CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0.1)]
+decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0.1),
+                CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0.1),
+                CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0.1)]
+output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=0.1)
 #
 # encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=0.25)]
 # decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=0.25)]
@@ -588,10 +588,10 @@ if __name__ == "__main__":
     # print(', '.join("%s: %s" % item for item in attrs.items()))
     dm = MovingMNISTDataModule(training_data_size=1, validation_data_size=1)
     # model.load_from_checkpoint(checkpoint_path='tb_logs/my_model_run_name/version_46/checkpoints/epoch=99-step=199.ckpt', encoder_rnns=encoder_rnns, decoder_rnns=decoder_rnns, output_cnn=output_cnn)
-    logger = TensorBoardLogger('tb_logs',name='my_model_run_name')
+    logger = TensorBoardLogger('bayesian_ConvLSTM',name='my_model_run_name')
     #trainer = pl.Trainer(auto_lr_find=True, logger=logger)
     #trainer = pl.Trainer(logger=logger, fast_dev_run=True)
-    trainer = pl.Trainer(logger=logger, max_epochs=200, gpus=1)
+    trainer = pl.Trainer(logger=logger, max_epochs=2, gpus=1)
 
     #trainer.tune(model, dm)
     trainer.fit(model, dm)

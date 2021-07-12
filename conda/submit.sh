@@ -44,4 +44,4 @@ python -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f
 python main.py
 
 # create an output tar archive
-tar -czf tb_logs.tar.gz tb_logs/
+tar -czf tb_logs.tar.gz bayesian_ConvLSTM/
