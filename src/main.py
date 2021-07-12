@@ -209,7 +209,10 @@ class BayesianDropout(pl.LightningModule):
         "generate dropout mask using x's shape"
         super().__init__()
         self.dropout = dropout
+        #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        #self.m = x.new_empty(x.size()).bernoulli_(1 - dropout).to(device)
         self.m = x.new_empty(x.size()).bernoulli_(1 - dropout)
+
 
     def forward(self, x):
         "apply the dropout mask to x"
@@ -256,11 +259,12 @@ class CLSTM_cell(pl.LightningModule):
         """
 
         # if hidden_state is None, initialize it with zeros
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         if hidden_state is None:
             hx = torch.zeros(inputs.size(1), self.num_features, self.shape[0],
-                             self.shape[1])
+                             self.shape[1]).to(device)
             cx = torch.zeros(inputs.size(1), self.num_features, self.shape[0],
-                             self.shape[1])
+                             self.shape[1]).to(device)
         else:
             hx, cx = hidden_state
 
@@ -276,7 +280,7 @@ class CLSTM_cell(pl.LightningModule):
         for index in range(seq_len):
             if inputs is None:
                 x = torch.zeros(hx.size(0), self.input_channels, self.shape[0],
-                                self.shape[1])
+                                self.shape[1]).to(device)
             else:
                 x = inputs[index, ...]
 
