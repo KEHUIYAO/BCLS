@@ -495,12 +495,12 @@ class LightningConvLstm(pl.LightningModule):
         self.log('train_loss', loss)
         
         # if it's the last batch in the current epoch, record the true image sequence and the predicted image sequences
-        if self.trainer.is_last_batch:
-            # add one image sequence in a batch and the corresponding predicted image
-            # only use the first image sequence in a batch
-            pred = pred[0, ...]
-            targetVar = targetVar[0, ...]
-            self.simple_plot(targetVar, pred, text='Train')
+        # if self.trainer.is_last_batch:
+        #     # add one image sequence in a batch and the corresponding predicted image
+        #     # only use the first image sequence in a batch
+        #     pred = pred[0, ...]
+        #     targetVar = targetVar[0, ...]
+        #     self.simple_plot(targetVar, pred, text='Train')
 
         return loss
     
@@ -508,9 +508,9 @@ class LightningConvLstm(pl.LightningModule):
         "the function is called after every epoch is completed"
         
         # add computational graph
-        if (self.current_epoch == 1):
-            sampleImg = torch.rand((1, 10, 1, 64, 64))
-            self.logger.experiment.add_graph(LightningConvLstm(encoder_rnns, decoder_rnns, output_cnn), sampleImg)
+        # if (self.current_epoch == 1):
+        #     sampleImg = torch.rand((1, 10, 1, 64, 64))
+        #     self.logger.experiment.add_graph(LightningConvLstm(encoder_rnns, decoder_rnns, output_cnn), sampleImg)
         
         
         # calculate the average loss
@@ -537,12 +537,12 @@ class LightningConvLstm(pl.LightningModule):
         self.log('validation_loss', loss)
 
         # if it's the first batch in the current epoch, record the true image sequence and the predicted image sequences
-        if batch_idx == 0:
-            # add one image sequence in a batch and the corresponding predicted image
-            # only use the first image sequence in a batch
-            pred_avg = pred_avg[0, ...]
-            targetVar = targetVar[0, ...]
-            self.simple_plot(targetVar, pred_avg, text='Validation')
+        # if batch_idx == 0:
+        #     # add one image sequence in a batch and the corresponding predicted image
+        #     # only use the first image sequence in a batch
+        #     pred_avg = pred_avg[0, ...]
+        #     targetVar = targetVar[0, ...]
+        #     self.simple_plot(targetVar, pred_avg, text='Validation')
 
         return loss
 
