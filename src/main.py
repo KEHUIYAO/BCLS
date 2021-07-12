@@ -166,7 +166,7 @@ class MovingMNIST(data.Dataset):
 
 class MovingMNISTDataModule(pl.LightningDataModule):
     def __init__(self, batch_size=1, training_data_size=1, validation_data_size=1, frames_input=10, frames_output=10, num_digits=2, image_size=64, digit_size=28, N=10,
-                 transform=None, use_fixed_dataset=True):
+                 transform=None, use_fixed_dataset=True, num_workers=64):
         super().__init__()
         self.training_data_size = training_data_size
         self.validation_data_size = validation_data_size
@@ -178,6 +178,7 @@ class MovingMNISTDataModule(pl.LightningDataModule):
         self.N = training_data_size + validation_data_size
         self.transform = transform
         self.use_fixed_dataset = use_fixed_dataset
+        self.num_workers = num_workers
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
@@ -194,10 +195,10 @@ class MovingMNISTDataModule(pl.LightningDataModule):
 
 
     def train_dataloader(self):
-        return DataLoader(self.training_data, batch_size=self.batch_size)
+        return DataLoader(self.training_data, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.validation_data, batch_size=self.batch_size)
+        return DataLoader(self.validation_data, batch_size=self.batch_size, num_workers=self.num_workers)
 
 
 
@@ -250,7 +251,7 @@ class CLSTM_cell(pl.LightningModule):
 
         self.dropout_rate = dropout_rate
 
-    def forward(self, inputs=None, hidden_state=None, seq_len=10, device=torch.device('cuda:0')):
+    def forward(self, inputs=None, hidden_state=None, seq_len=10):
         """
         inputs is of size (S, B, C, H, W)
         hidden state is of size (B, C_new, H, W)
@@ -261,9 +262,9 @@ class CLSTM_cell(pl.LightningModule):
         # if hidden_state is None, initialize it with zeros
         if hidden_state is None:
             hx = torch.zeros(inputs.size(1), self.num_features, self.shape[0],
-                             self.shape[1]).to(device)
+                             self.shape[1])
             cx = torch.zeros(inputs.size(1), self.num_features, self.shape[0],
-                             self.shape[1]).to(device)
+                             self.shape[1])
         else:
             hx, cx = hidden_state
 
@@ -279,7 +280,7 @@ class CLSTM_cell(pl.LightningModule):
         for index in range(seq_len):
             if inputs is None:
                 x = torch.zeros(hx.size(0), self.input_channels, self.shape[0],
-                                self.shape[1]).to(device)
+                                self.shape[1])
             else:
                 x = inputs[index, ...]
 
