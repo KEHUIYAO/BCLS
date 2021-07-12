@@ -553,6 +553,7 @@ class LightningConvLstm(pl.LightningModule):
 
         # logging using tensorboard logger
         self.logger.experiment.add_scalar('Loss/Validation', avg_loss, self.current_epoch)
+        print(avg_loss)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
