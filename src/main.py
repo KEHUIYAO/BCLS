@@ -201,7 +201,7 @@ class MovingMNISTDataModule(pl.LightningDataModule):
 
 
 
-class BayesianDropout(nn.Module):
+class BayesianDropout(pl.LightningModule):
     """
      Implementation of BAYESIAN CONVOLUTIONAL NEURAL NETWORKS WITH BERNOULLI APPROXIMATE VARIATIONAL INFERENCE by Yarin Gal and the core idea is to set an approximating distribution modelling each kernel-patch pair with a distinct random variable, and this distribution randomly sets kernels to zero for different patches, which results in the equivalent explanation of applying dropout for each element in the tensor y before pooling. So implementing the bayesian CNN is therefore as simple as using dropout after every convolution layer before pooling
     """
@@ -216,7 +216,7 @@ class BayesianDropout(nn.Module):
         x = x.masked_fill(self.m == 0, 0)
         return x
 
-class CLSTM_cell(nn.Module):
+class CLSTM_cell(pl.LightningModule):
     """
     singler layer of ConvLSTMCell
     """
@@ -311,7 +311,7 @@ class CLSTM_cell(nn.Module):
 
         return torch.stack(output_inner), (hy, cy)
 
-class ConvCell(nn.Module):
+class ConvCell(pl.LightningModule):
     """
     used to apply separate CNN for images at different time steps
     """
@@ -369,7 +369,7 @@ class ConvCell(nn.Module):
 
 
 
-class Encoder(nn.Module):
+class Encoder(pl.LightningModule):
     """
     used to encode the data.
     consists of multiple ConvLSTM cells
@@ -396,7 +396,7 @@ class Encoder(nn.Module):
 
         return tuple(hidden_states)
 
-class Decoder(nn.Module):
+class Decoder(pl.LightningModule):
     """
     used to decode data.
     consists of multiple ConvLSTM cells and one ConvCell mapping the hidden state to output
@@ -433,7 +433,7 @@ class Decoder(nn.Module):
 
 
 
-class ED(nn.Module):
+class ED(pl.LightningModule):
     def __init__(self, encoder, decoder):
         super().__init__()
         self.encoder = encoder
