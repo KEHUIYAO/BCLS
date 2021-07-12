@@ -586,12 +586,13 @@ if __name__ == "__main__":
     model = LightningConvLstm(encoder_rnns, decoder_rnns, output_cnn)
     # attrs = vars(model)
     # print(', '.join("%s: %s" % item for item in attrs.items()))
-    dm = MovingMNISTDataModule(training_data_size=1, validation_data_size=1)
+    dm = MovingMNISTDataModule(training_data_size=80, validation_data_size=20, batch_size=5, frames_input=10, frames_output=10, num_digits=2, image_size=64, digit_size=28, N=100,
+                 transform=None, use_fixed_dataset=True, num_workers=64)
     # model.load_from_checkpoint(checkpoint_path='tb_logs/my_model_run_name/version_46/checkpoints/epoch=99-step=199.ckpt', encoder_rnns=encoder_rnns, decoder_rnns=decoder_rnns, output_cnn=output_cnn)
     logger = TensorBoardLogger('tb_logs',name='my_model_run_name')
     #trainer = pl.Trainer(auto_lr_find=True, logger=logger)
     #trainer = pl.Trainer(logger=logger, fast_dev_run=True)
-    trainer = pl.Trainer(logger=logger, max_epochs=2, gpus=1)
+    trainer = pl.Trainer(logger=logger, max_epochs=20, gpus=1)
 
     #trainer.tune(model, dm)
     trainer.fit(model, dm)
