@@ -212,7 +212,7 @@ class BayesianDropout(pl.LightningModule):
         self.dropout = dropout
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.m = x.new_empty(x.size()).bernoulli_(1 - dropout).to(device)
-        self.m = x.new_empty(x.size()).bernoulli_(1 - dropout)
+        #self.m = x.new_empty(x.size()).bernoulli_(1 - dropout)
 
 
     def forward(self, x):
