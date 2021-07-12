@@ -210,8 +210,8 @@ class BayesianDropout(pl.LightningModule):
         "generate dropout mask using x's shape"
         super().__init__()
         self.dropout = dropout
-        #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        #self.m = x.new_empty(x.size()).bernoulli_(1 - dropout).to(device)
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.m = x.new_empty(x.size()).bernoulli_(1 - dropout).to(device)
         self.m = x.new_empty(x.size()).bernoulli_(1 - dropout)
 
 
@@ -588,7 +588,7 @@ if __name__ == "__main__":
     # print(', '.join("%s: %s" % item for item in attrs.items()))
     dm = MovingMNISTDataModule(training_data_size=1, validation_data_size=1)
     # model.load_from_checkpoint(checkpoint_path='tb_logs/my_model_run_name/version_46/checkpoints/epoch=99-step=199.ckpt', encoder_rnns=encoder_rnns, decoder_rnns=decoder_rnns, output_cnn=output_cnn)
-    logger = TensorBoardLogger('bayesian_ConvLSTM',name='my_model_run_name')
+    logger = TensorBoardLogger('tb_logs',name='my_model_run_name')
     #trainer = pl.Trainer(auto_lr_find=True, logger=logger)
     #trainer = pl.Trainer(logger=logger, fast_dev_run=True)
     trainer = pl.Trainer(logger=logger, max_epochs=2, gpus=1)
