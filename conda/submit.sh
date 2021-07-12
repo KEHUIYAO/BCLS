@@ -21,7 +21,7 @@ export PATH=$HOME/miniconda3/bin:$PATH
 # Update conda as workaround for https://github.com/conda/conda/issues/9681
 # Will no longer be needed once conda >= 4.8.3 is available from repo.anaconda.com
 conda install conda=4.8.3
-conda install pytorch-lightning -c conda-forge
+
 
 # Set up conda
 source $HOME/miniconda3/etc/profile.d/conda.sh
@@ -33,6 +33,10 @@ conda env create -f environment.yml
 
 # Activate the environment and log all packages that were installed
 conda activate pytorch-gpu
+
+# install another package
+conda install pytorch-lightning -c conda-forge
+
 conda list
 
 # Modify these lines to run your desired Python script
