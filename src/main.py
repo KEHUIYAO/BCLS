@@ -13,6 +13,7 @@ import os
 import gzip
 from PIL import Image
 import random
+import argparse
 
 
 class MovingMNIST(data.Dataset):
@@ -165,9 +166,10 @@ class MovingMNIST(data.Dataset):
 
 
 class MovingMNISTDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size=1, training_data_size=1, validation_data_size=1, frames_input=10, frames_output=10, num_digits=2, image_size=64, digit_size=28, N=10,
+    def __init__(self, root='data/', batch_size=1, training_data_size=1, validation_data_size=1, frames_input=10, frames_output=10, num_digits=2, image_size=64, digit_size=28, N=10,
                  transform=None, use_fixed_dataset=True, num_workers=64):
         super().__init__()
+        self.root = root
         self.training_data_size = training_data_size
         self.validation_data_size = validation_data_size
         self.batch_size = batch_size
@@ -182,7 +184,7 @@ class MovingMNISTDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
-            self.data = MovingMNIST(root='data/',
+            self.data = MovingMNIST(root=self.root,
                               n_frames_input=self.frames_input,
                               n_frames_output=self.frames_output,
                               image_size=self.image_size,
@@ -251,7 +253,7 @@ class CLSTM_cell(pl.LightningModule):
 
         self.dropout_rate = dropout_rate
 
-    def forward(self, inputs=None, hidden_state=None, seq_len=10, device=torch.device('cuda:0')):
+    def forward(self, inputs=None, hidden_state=None, seq_len=10):
         """
         inputs is of size (S, B, C, H, W)
         hidden state is of size (B, C_new, H, W)
@@ -260,6 +262,8 @@ class CLSTM_cell(pl.LightningModule):
         """
 
         # if hidden_state is None, initialize it with zeros
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
         if hidden_state is None:
             hx = torch.zeros(inputs.size(1), self.num_features, self.shape[0],
                              self.shape[1]).to(device)
@@ -573,7 +577,7 @@ encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_
 decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0.1),
                 CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0.1),
                 CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0.1)]
-output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=0.1)
+output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=0.1 )
 #
 # encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=0.25)]
 # decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=0.25)]
@@ -583,21 +587,41 @@ output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, 
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root', type=str, default='data/')
+    parser.add_argument('--dropout_rate', type=float, default=0, help='dropout rate for all layers')
+    parser.add_argument('--training_data_size', type=int, default=80)
+    parser.add_argument('--validation_data_size', type=int, default=20)
+    parser.add_argument('--batch_size', type=int, default=5)
+    parser.add_argument('--gpu', type=int, default=1, help='type 1 if you want to use gpu, type 0 if you want to use cpu')
+    parser.add_argument('--num_of_workers', type=int, default=64)
+
+
+
+    args = parser.parse_args()
+
+
+
+
     model = LightningConvLstm(encoder_rnns, decoder_rnns, output_cnn)
     # attrs = vars(model)
     # print(', '.join("%s: %s" % item for item in attrs.items()))
-    dm = MovingMNISTDataModule(training_data_size=80, validation_data_size=20, batch_size=5, frames_input=10, frames_output=10, num_digits=2, image_size=64, digit_size=28, N=100,
-                 transform=None, use_fixed_dataset=True, num_workers=64)
+    dm = MovingMNISTDataModule(root=args.root, training_data_size=args.training_data_size, validation_data_size=args.validation_data_size, batch_size=args.batch_size, frames_input=10, frames_output=10, num_digits=2, image_size=64, digit_size=28, N=args.training_data_size + args.validation_data_size,
+                 transform=None, use_fixed_dataset=True, num_workers=args.num_of_workers)
     # model.load_from_checkpoint(checkpoint_path='tb_logs/my_model_run_name/version_46/checkpoints/epoch=99-step=199.ckpt', encoder_rnns=encoder_rnns, decoder_rnns=decoder_rnns, output_cnn=output_cnn)
-    logger = TensorBoardLogger('tb_logs',name='my_model_run_name')
+    logger = TensorBoardLogger('tb_logs',name='Bayesian_ConvLSTM')
     #trainer = pl.Trainer(auto_lr_find=True, logger=logger)
     #trainer = pl.Trainer(logger=logger, fast_dev_run=True)
-    trainer = pl.Trainer(logger=logger, max_epochs=20, gpus=1)
+    if args.gpu == 0:
+        trainer = pl.Trainer(logger=logger, max_epochs=20)
+    else:
+        trainer = pl.Trainer(logger=logger, max_epochs=20, gpus=1)
 
     #trainer.tune(model, dm)
     trainer.fit(model, dm)
 
 
+    # to run on cpus: try python main.py --root='../../data' --training_data_size=1 --validation_data_size=1 --gpu=0 --num_of_worker=1
     # load tensorboard
     # %load_ext tensorboard
     # %tensorboard --logdir tb_logs/my_model_run_name

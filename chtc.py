@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
 
             def take_input_1():
-                "listen to user's command to interact with the server"
+                "wait for user's command to interact with the server"
                 global thread_running
                 global switch
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
 
             def take_input_2():
-                "listen to user's input, switch to user's control mode"
+                "wait for user's input, switch to user's control mode"
                 global switch
                 mode = input('waiting for you, the session never dies :)')
                 if mode == '1':
@@ -137,21 +137,27 @@ if __name__ == "__main__":
                 while True:
                     if switch == 1:
                         thread_running = True
-                        t1 = Thread(target=my_forever_while)
-                        t2 = Thread(target=take_input_2)
+
+
+                        t1 = Thread(target=my_forever_while) # initially, this thread runs forever since the thread_running is True
+                        t2 = Thread(target=take_input_2)  # this thread is waiting for user's input, after user's input, this thread ends and the code below can be execeuted
+
                         t1.start()
                         t2.start()
                         t2.join()
 
-                        thread_running = False
-                        channel.send('\n')
+
+                        thread_running = False # modify the thread_running global variable to end my_forever_loop
+                        channel.send('\n') # trigger user's input function because we know what the message the server side will return after you send '\n'
 
                     elif switch == 2:
+                        # receive the triggering message
                         if channel.recv_ready():
                             channel_data += channel.recv(9999).decode('utf-8')
                         else:
                             continue
 
+                        # trigger user's input function
                         if 'kyao24@submit2' in channel_data:
                             print(channel_data)
                             channel_data = str()
