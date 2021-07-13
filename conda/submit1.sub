@@ -16,7 +16,7 @@ request_gpus = 1
 +GPUJobLength = "short"
 
 request_cpus = 1
-request_memory = 4GB
+request_memory = 16GB
 request_disk = 5GB
 
 log = $(Cluster)_$(Process).log
