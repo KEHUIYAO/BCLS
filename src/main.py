@@ -613,9 +613,9 @@ if __name__ == "__main__":
     #trainer = pl.Trainer(auto_lr_find=True, logger=logger)
     #trainer = pl.Trainer(logger=logger, fast_dev_run=True)
     if args.gpu == 0:
-        trainer = pl.Trainer(logger=logger, max_epochs=20)
+        trainer = pl.Trainer(logger=logger, max_epochs=20, precision=16)
     else:
-        trainer = pl.Trainer(logger=logger, max_epochs=20, gpus=1)
+        trainer = pl.Trainer(logger=logger, max_epochs=20, gpus=1, precision=16)
 
     #trainer.tune(model, dm)
     trainer.fit(model, dm)
