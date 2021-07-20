@@ -591,9 +591,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=str, default='data/')
     parser.add_argument('--dropout_rate', type=float, default=0, help='dropout rate for all layers')
-    parser.add_argument('--training_data_size', type=int, default=2)
-    parser.add_argument('--validation_data_size', type=int, default=1)
-    parser.add_argument('--batch_size', type=int, default=1)
+    parser.add_argument('--training_data_size', type=int, default=80)
+    parser.add_argument('--validation_data_size', type=int, default=20)
+    parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--gpu', type=int, default=1, help='type 1 if you want to use gpu, type 0 if you want to use cpu')
 
 
