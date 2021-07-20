@@ -167,7 +167,7 @@ class MovingMNIST(data.Dataset):
 
 class MovingMNISTDataModule(pl.LightningDataModule):
     def __init__(self, root='data/', batch_size=1, training_data_size=1, validation_data_size=1, frames_input=10, frames_output=10, num_digits=2, image_size=64, digit_size=28, N=10,
-                 transform=None, use_fixed_dataset=True, num_workers=64):
+                 transform=None, use_fixed_dataset=True):
         super().__init__()
         self.root = root
         self.training_data_size = training_data_size
@@ -180,7 +180,7 @@ class MovingMNISTDataModule(pl.LightningDataModule):
         self.N = training_data_size + validation_data_size
         self.transform = transform
         self.use_fixed_dataset = use_fixed_dataset
-        self.num_workers = num_workers
+
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
@@ -197,10 +197,10 @@ class MovingMNISTDataModule(pl.LightningDataModule):
 
 
     def train_dataloader(self):
-        return DataLoader(self.training_data, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.training_data, batch_size=self.batch_size)
 
     def val_dataloader(self):
-        return DataLoader(self.validation_data, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.validation_data, batch_size=self.batch_size)
 
 
 
@@ -594,7 +594,7 @@ if __name__ == "__main__":
     parser.add_argument('--validation_data_size', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=5)
     parser.add_argument('--gpu', type=int, default=1, help='type 1 if you want to use gpu, type 0 if you want to use cpu')
-    parser.add_argument('--num_of_workers', type=int, default=64)
+
 
 
 
@@ -607,7 +607,7 @@ if __name__ == "__main__":
     # attrs = vars(model)
     # print(', '.join("%s: %s" % item for item in attrs.items()))
     dm = MovingMNISTDataModule(root=args.root, training_data_size=args.training_data_size, validation_data_size=args.validation_data_size, batch_size=args.batch_size, frames_input=10, frames_output=10, num_digits=2, image_size=64, digit_size=28, N=args.training_data_size + args.validation_data_size,
-                 transform=None, use_fixed_dataset=True, num_workers=args.num_of_workers)
+                 transform=None, use_fixed_dataset=True)
     # model.load_from_checkpoint(checkpoint_path='tb_logs/my_model_run_name/version_46/checkpoints/epoch=99-step=199.ckpt', encoder_rnns=encoder_rnns, decoder_rnns=decoder_rnns, output_cnn=output_cnn)
     logger = TensorBoardLogger('tb_logs',name='Bayesian_ConvLSTM')
     #trainer = pl.Trainer(auto_lr_find=True, logger=logger)
@@ -624,7 +624,7 @@ if __name__ == "__main__":
     # to run on cpus: try python main.py --root='../../data' --training_data_size=1 --validation_data_size=1 --gpu=0 --num_of_worker=1
     # load tensorboard
     # %load_ext tensorboard
-    # %tensorboard --logdir tb_logs/my_model_run_name
+    # %tensorboard --logdir tb_logs/Bayesian_ConvLSTM
 
 
 
