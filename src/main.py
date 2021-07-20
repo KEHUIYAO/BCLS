@@ -528,7 +528,7 @@ class LightningConvLstm(pl.LightningModule):
 
 
 
-    def validation_step(self, batch, batch_idx, mc_dropout=10):
+    def validation_step(self, batch, batch_idx, mc_dropout=50):
         #attrs = vars(self.trainer)
         #print(', '.join("%s: %s" % item for item in attrs.items()))
         (idx, targetVar, inputVar, _, _) = batch
