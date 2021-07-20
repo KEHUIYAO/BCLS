@@ -44,4 +44,4 @@ python -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f
 python main.py --dropout_rate=0
 
 # create an output tar archive
-tar -czf no_dropout.tar.gz tb_logs
+tar -czf no_dropout.tar.gz tb_logs/Bayesian_ConvLSTM
