@@ -514,7 +514,8 @@ class LightningConvLstm(pl.LightningModule):
         
         # add computational graph
         if (self.current_epoch == 1):
-            sampleImg = torch.rand((1, 10, 1, 64, 64))
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            sampleImg = torch.rand((1, 10, 1, 64, 64)).to(device)
             self.logger.experiment.add_graph(LightningConvLstm(encoder_rnns, decoder_rnns, output_cnn), sampleImg)
         
         
