@@ -41,7 +41,7 @@ conda list
 
 # Modify these lines to run your desired Python script
 python -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA device: {torch.cuda.get_device_name(0)}')"
-python main.py --dropout_rate=0
+python main.py --dropout_rate=0 --training_data_size=1000 --validation_data_size=100 --max_epoch=100
 
 # create an output tar archive
 tar -czf no_dropout.tar.gz tb_logs/Bayesian_ConvLSTM

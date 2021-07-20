@@ -571,19 +571,7 @@ class LightningConvLstm(pl.LightningModule):
 
 
 
-# train
-# encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0.1),
-#                 CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0.1),
-#                 CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0.1)]
-# decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=0.1),
-#                 CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=0.1),
-#                 CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=0.1)]
-# output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=0.1 )
-#
-encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=0.25)]
-decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=0.25)]
 
-output_cnn = ConvCell(in_channels=16, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=0.25)
 
 
 
@@ -591,15 +579,29 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=str, default='data/')
     parser.add_argument('--dropout_rate', type=float, default=0, help='dropout rate for all layers')
-    parser.add_argument('--training_data_size', type=int, default=200)
+    parser.add_argument('--training_data_size', type=int, default=20)
     parser.add_argument('--validation_data_size', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--gpu', type=int, default=1, help='type 1 if you want to use gpu, type 0 if you want to use cpu')
+    parser.add_argument('--max_epoch', type=int, default=20)
 
 
 
 
     args = parser.parse_args()
+    # train
+    # encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=args.dropout_rate),
+    #                 CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=args.dropout_rate),
+    #                 CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=args.dropout_rate)]
+    # decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=args.dropout_rate),
+    #                 CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=args.dropout_rate),
+    #                 CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=args.dropout_rate)]
+    # output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=args.dropout_rate)
+    #
+    encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)]
+    decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)]
+
+    output_cnn = ConvCell(in_channels=16, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=args.dropout_rate)
 
 
 
@@ -614,9 +616,9 @@ if __name__ == "__main__":
     #trainer = pl.Trainer(auto_lr_find=True, logger=logger)
     #trainer = pl.Trainer(logger=logger, fast_dev_run=True)
     if args.gpu == 0:
-        trainer = pl.Trainer(logger=logger, max_epochs=20)
+        trainer = pl.Trainer(logger=logger, max_epochs=args.max_epoch)
     else:
-        trainer = pl.Trainer(logger=logger, max_epochs=200, gpus=1)
+        trainer = pl.Trainer(logger=logger, max_epochs=args.max_epoch, gpus=1)
 
     #trainer.tune(model, dm)
     trainer.fit(model, dm)
