@@ -25,7 +25,7 @@ class MovingMNIST(data.Dataset):
         super().__init__()
         self.use_fixed_dataset = use_fixed_dataset
         if not use_fixed_dataset:
-            self.mnist = self.load_mnist(root)
+            self.mnist = self.load_mnist(root, image_size=digit_size)
         else:
             self.dataset = self.load_fixed_set(root)
 
@@ -45,7 +45,7 @@ class MovingMNIST(data.Dataset):
         self.step_length_ = 0.1
         self.num_digits = num_digits
 
-    def load_mnist(self, root, image_size=28):
+    def load_mnist(self, root, image_size):
         # Load MNIST dataset for generating training data.
         path = os.path.join(root, 'train-images-idx3-ubyte.gz')
         with gzip.open(path, 'rb') as f:
@@ -133,7 +133,8 @@ class MovingMNIST(data.Dataset):
         #     images = self.transform(images)
 
         r = 1
-        w = int(64 / r)
+        w = int(self.image_size_ / r)
+        # w = int(64 / r)
         images = images.reshape((length, w, r, w, r)).transpose(0, 2, 4, 1, 3).reshape((length, r * r, w, w))
 
         input = images[:self.n_frames_input]
@@ -496,6 +497,7 @@ class LightningConvLstm(pl.LightningModule):
         #print(', '.join("%s: %s" % item for item in attrs.items()))
         (idx, targetVar, inputVar, _, _) = batch
         pred = self.forward(inputVar)  # (B,S,C,H,W)
+        print(targetVar[0,0,0,...])
         loss = self.loss_function(pred, targetVar)
         self.log('train_loss', loss)
         
@@ -585,7 +587,15 @@ if __name__ == "__main__":
     parser.add_argument('--gpu', type=int, default=1, help='type 1 if you want to use gpu, type 0 if you want to use cpu')
     parser.add_argument('--max_epoch', type=int, default=20)
 
-
+    # debug locally
+    # parser.add_argument('--root', type=str, default='../../data/')
+    # parser.add_argument('--dropout_rate', type=float, default=0, help='dropout rate for all layers')
+    # parser.add_argument('--training_data_size', type=int, default=1)
+    # parser.add_argument('--validation_data_size', type=int, default=1)
+    # parser.add_argument('--batch_size', type=int, default=1)
+    # parser.add_argument('--gpu', type=int, default=0,
+    #                     help='type 1 if you want to use gpu, type 0 if you want to use cpu')
+    # parser.add_argument('--max_epoch', type=int, default=20)
 
 
     args = parser.parse_args()
@@ -606,12 +616,12 @@ if __name__ == "__main__":
 
 
     ## case 3
-    encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=64, dropout_rate=args.dropout_rate),
-                    CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)]
-    decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=64, dropout_rate=args.dropout_rate),
-                    CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)
+    encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=args.dropout_rate),
+                    CLSTM_cell(shape=(64, 64), input_channels=16, filter_size=5, num_features=8, dropout_rate=args.dropout_rate)]
+    decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=args.dropout_rate),
+                    CLSTM_cell(shape=(64, 64), input_channels=16, filter_size=5, num_features=8, dropout_rate=args.dropout_rate)
                     ]
-    output_cnn = ConvCell(in_channels=80, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=args.dropout_rate)
+    output_cnn = ConvCell(in_channels=24, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=args.dropout_rate)
 
 
 
