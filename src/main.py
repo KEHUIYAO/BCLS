@@ -589,7 +589,7 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
-    # train
+    # # case 1
     # encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=128, dropout_rate=args.dropout_rate),
     #                 CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=args.dropout_rate),
     #                 CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=args.dropout_rate)]
@@ -597,12 +597,21 @@ if __name__ == "__main__":
     #                 CLSTM_cell(shape=(64, 64), input_channels=128, filter_size=5, num_features=64, dropout_rate=args.dropout_rate),
     #                 CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=64, dropout_rate=args.dropout_rate)]
     # output_cnn = ConvCell(in_channels=256, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=args.dropout_rate)
+
+    ## case 2
+    # encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)]
+    # decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)]
     #
-    encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)]
-    decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)]
+    # output_cnn = ConvCell(in_channels=16, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=args.dropout_rate)
 
-    output_cnn = ConvCell(in_channels=16, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=args.dropout_rate)
 
+    ## case 3
+    encoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=64, dropout_rate=args.dropout_rate),
+                    CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)]
+    decoder_rnns = [CLSTM_cell(shape=(64, 64), input_channels=1, filter_size=5, num_features=64, dropout_rate=args.dropout_rate),
+                    CLSTM_cell(shape=(64, 64), input_channels=64, filter_size=5, num_features=16, dropout_rate=args.dropout_rate)
+                    ]
+    output_cnn = ConvCell(in_channels=80, out_channels=1, kernel_size=1, stride=1, padding=0, dropout_rate=args.dropout_rate)
 
 
 
