@@ -2,6 +2,7 @@
 """
 import numpy as np
 
+
 class DatasetDstm:
     """class for generating data from a basic dynamical spatio-temporal model
 
@@ -573,13 +574,17 @@ class DatasetDstm3:
         Z = Z[..., None]
         Z = Z.transpose(3, 2, 4, 0, 1)  # convert data to total x T x 1 x n x n
 
+        # normalization
+        scaled_Z = (Z - np.min(Z)) / (np.max(Z) - np.min(Z))
+
+
 
         # the best we can do is that we fit everything except the spatial error terms
         print(
             "based on the error term, the best mse we can achieve will be above %.4f"
-            % np.mean(eta**2))
+            % np.mean((eta / (np.max(Z) - np.min(Z)))**2))
 
-        return Z.astype(np.float32)
+        return scaled_Z.astype(np.float32)
 
     def __len__(self):
         return self.Z.shape[0]

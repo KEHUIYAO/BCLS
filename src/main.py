@@ -214,7 +214,10 @@ if __name__ == "__main__":
     logger = TensorBoardLogger('tb_logs', name='Bayesian_ConvLSTM')
     # trainer = pl.Trainer(auto_lr_find=True, logger=logger)
     # trainer = pl.Trainer(logger=logger, fast_dev_run=True)
-    trainer = pl.Trainer(logger=logger, max_epochs=max_epoch, gpus=1)
+    if torch.cuda.is_available():
+        trainer = pl.Trainer(logger=logger, max_epochs=max_epoch, gpus=1)
+    else:
+        trainer = pl.Trainer(logger=logger, max_epochs=max_epoch)
     
 
 
