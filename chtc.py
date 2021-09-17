@@ -51,7 +51,7 @@ if __name__ == "__main__":
     channel_data = str()
     while True:
         if channel.recv_ready():
-            channel_data += channel.recv(9999).decode('utf-8')
+            channel_data += channel.recv(9999).decode('utf-8', errors='ignore')
         else:
             continue
 
@@ -69,19 +69,15 @@ if __name__ == "__main__":
         elif channel_data.endswith('[kyao24@submit2 ~]$ '):
             print(channel_data)
             channel_data = str()
-            channel.send('cd template-soil-moisture-project/soil_moisture_project/\n')
+            channel.send('cd BCLS/conda/\n')
 
-        elif channel_data.endswith('[kyao24@submit2 soil_moisture_project]$ '):
+        elif channel_data.endswith('[kyao24@submit2 conda]$ '):
             print(channel_data)
             channel_data = str()
             #channel.send('git pull origin master\n')
             channel.send('cd conda\n')
             #channel.send('condor_q\n')
 
-        elif channel_data.endswith('[kyao24@submit2 conda]$ '):
-            print(channel_data)
-            channel_data = str()
-            channel.send('\n')
 
             def my_forever_while():
                 "interact with the server every 5 seconds, so that the server will never time out you"
@@ -153,7 +149,7 @@ if __name__ == "__main__":
                     elif switch == 2:
                         # receive the triggering message
                         if channel.recv_ready():
-                            channel_data += channel.recv(9999).decode('utf-8')
+                            channel_data += channel.recv(9999).decode('utf-8', errors='ignore')
                         else:
                             continue
 
