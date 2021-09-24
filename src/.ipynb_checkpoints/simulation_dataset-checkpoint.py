@@ -2,6 +2,7 @@
 """
 import numpy as np
 
+
 class DatasetDstm:
     """class for generating data from a basic dynamical spatio-temporal model
 
@@ -482,14 +483,23 @@ class DatasetDstm3:
         :param theta4: parameter in the linear dstm model
         :param total: total number of training samples
         :param mask: a numpy vector of T containing 0 and 1s, indicating the missing patterns of the sequence
-        :param baseline_underlying: Y_0(s)
+        :param baseline_underlying: a matrix or a list of matrix, representing Y_0(s) of the ith training sample
 
 
         """
 
 
         self.mask = mask
-        self.baseline_underlying = baseline_underlying
+        
+        # if baseline_underlying is a scalar, then first expand it to be a numpy array, and assuming each training sample has the same baseline
+        if not hasattr(baseline_underlying, "__len__"):
+            self.baseline_underlying = [np.ones(n**2) * baseline_underlying for i in range(total)]
+        else:
+            if baseline_underlying.ndim == 1:  # assuming each training sample has the same baseline
+                self.baseline_underlying = [baseline_underlying for i in range(total)]
+            else:
+                self.baseline_underlying = baseline_underlying
+        
 
 
         self.Z = self.prepare_data(n, T, theta1, theta2, theta3, theta4, total)
@@ -549,7 +559,7 @@ class DatasetDstm3:
             print("valid initial parameters!")
 
         # random error terms
-        eta = np.random.randn(n * n, T, total) * 2
+        eta = np.random.randn(n * n, T, total) * 0.01
 
         # simulate obs
         Z = np.zeros((n * n, T, total))
@@ -559,19 +569,30 @@ class DatasetDstm3:
 
 
         for i in range(total):
-            Y[:, 0, i] = self.baseline_underlying
+            Y[:, 0, i] = self.baseline_underlying[i]
 
-            Z[:, 0, i] = Y[:, 0, i] + eta[:, 0, i]
-
+           
             for t in range(1, T):
                 Y[:, t, i] = np.dot(weights_matrix, (Y[:, (t - 1),
                                                      i])[:, None]).ravel() + eta[:, t, i]
 
-                Z[:, t, i] = Y[:, t, i ] + eta[:, t, i]
+    
+                
+        # normalization
+        scaled_Y = (Y - np.min(Y)) / (np.max(Y) - np.min(Y))
+        
+        # add error term
+        for i in range(total):
+            for t in range(T):
+                Z[:, t, i] = scaled_Y[:, t, i ] + eta[:, t, i]
+        
 
         Z = Z.reshape((n, n, T, total))  # convert data to n x n x T x total
         Z = Z[..., None]
         Z = Z.transpose(3, 2, 4, 0, 1)  # convert data to total x T x 1 x n x n
+
+     
+
 
 
         # the best we can do is that we fit everything except the spatial error terms

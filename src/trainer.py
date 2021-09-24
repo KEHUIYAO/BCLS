@@ -45,6 +45,8 @@ class LightningED(pl.LightningModule):
 
         # calculate the average loss
         avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
+        
+        #print(avg_loss)
 
 
         # logging using tensorboard logger
@@ -78,6 +80,8 @@ class LightningED(pl.LightningModule):
         self.logger.experiment.add_scalar('Loss/Validation', avg_loss, self.current_epoch)
         self.logger.experiment.add_scalar('Loss/Naive_predictor', avg_naive_predictor_loss, self.current_epoch)
         self.log('val_loss', avg_loss)  # metric to be tracked
+        
+        # print(avg_loss)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
