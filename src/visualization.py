@@ -141,16 +141,20 @@ def plot_spatio_temporal_data(x, figsize=(20, 8), add_text=False, **textkw):
         axs = axs.ravel()
 
 
-    row_label = np.arange(n)
-    col_label = np.arange(n)
+    # row_label = np.arange(n)
+    # col_label = np.arange(n)
+
+    # for i in range(T):
+    #     im, cbar = heatmap(x[i, ...], row_label, col_label, ax=axs[i], cmap='YlGn')
+    #     if add_text:
+    #         texts = annotate_heatmap(im, valfmt="{x:.1f}", **textkw)
+    #
+    # fig.tight_layout()
+    # return fig
 
     for i in range(T):
-        im, cbar = heatmap(x[i, ...], row_label, col_label, ax=axs[i], cmap='YlGn')
-        if add_text:
-            texts = annotate_heatmap(im, valfmt="{x:.1f}", **textkw)
+        sns.heatmap(x[i, ...], ax=axs[i], cbar=False)
 
-    fig.tight_layout()
-    # return fig
     plt.show()
 
 
