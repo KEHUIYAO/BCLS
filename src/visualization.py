@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 import seaborn as sns
 import numpy as np; np.random.seed(0)
 import seaborn as sns; sns.set_theme()
@@ -152,6 +153,64 @@ def plot_spatio_temporal_data(x, figsize=(20, 8), add_text=False, **textkw):
     # return fig
     plt.show()
 
+
+def set_interval_value(x, a, b):
+    # function that associate to a float x, a value encoding its position with respect to the interval [a, b]
+    #  the associated values are 0, 1, 2 assigned as follows:
+    if x <= a:
+        return 0
+    elif a < x <= b:
+        return 1
+    else:
+        return 2
+
+def data2color(x, y, a, b, c, d):
+    # This function works only with a list of 9 bivariate colors, because of the definition of set_interval_value()
+    # x, y: lists or 1d arrays, containing values of the two variables
+    #  each x[k], y[k] is mapped to an int  value xv, respectively yv, representing its category,
+    # from which we get their corresponding color  in the list of bivariate colors
+    if len(x) != len(y):
+        raise ValueError('the list of x and y-coordinates must have the same length')
+    n = 3
+    xcol = [set_interval_value(v, a, b) for v in x]
+    ycol = [set_interval_value(v, c, d) for v in y]
+    idxcol = [int(xc + n*yc) for xc, yc in zip(xcol,ycol)]# index of the corresponding color in the list of bivariate colors
+
+    return idxcol
+
+
+def plot_spatio_temporal_data_with_uncertainty(x, figsize=(20, 8)):
+    """x is a (T, n, n) tensor, T is the temporal dimension, nxn is the spatio dimension"""
+    T = x.shape[0]
+    n = x.shape[1]
+
+    # each row can at most have 5 images
+    if T % 5 == 0:
+        fig, axs = plt.subplots(T // 5, 5, figsize=figsize)
+        axs = axs.ravel()
+    else:
+        fig, axs = plt.subplots((T // 5 + 1), 5, figsize=figsize)
+        axs = axs.ravel()
+
+    # create a bivariate color map
+    jstevens = ["#e8e8e8", "#ace4e4", "#5ac8c8", "#dfb0d6", "#a5add3",
+                "#5698b9", "#be64ac", "#8c62aa", "#3b4994"]  # use the existing colors
+    #values = [8, 7, 6, 5, 4, 3, 2, 1, 0]
+    values = np.arange(9)
+
+    cmap = ListedColormap(jstevens)
+
+    print(cmap(values))
+
+    for i in range(T):
+        sns.heatmap(x[i, ...], cmap=cmap, ax=axs[i], cbar=False)  # don't draw a color bar
+
+
+    plt.show()
+
+
+
+
 def test_plot_spatio_temporal_data():
     T = 15
     n = 10
@@ -179,4 +238,15 @@ def test_plot_spatio_temporal_data():
 
 if __name__ == '__main__':
 
-   test_plot_spatio_temporal_data()
+
+    # test the bivariate plot
+    x = np.arange(10)
+    y = np.arange(10)
+    a = 3
+    b = 6
+    c = 3
+    d = 6
+    print(data2color(x, y, a, b, c, d))
+    test_sequence = np.random.randint(low=0, high=8, size=(4, 3, 3))
+    plot_spatio_temporal_data_with_uncertainty(test_sequence)
+
