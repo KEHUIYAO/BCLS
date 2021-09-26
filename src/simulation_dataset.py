@@ -4,7 +4,12 @@ import numpy as np
 import os
 import gzip
 import random
-from visualization import plot_spatio_temporal_data
+
+import sys
+
+# insert at 1, 0 is the script path (or ‘’ in REPL)
+# sys.path.insert(1, './')
+# from visualization import plot_spatio_temporal_data
 
 
 class DatasetDstm:
@@ -814,7 +819,7 @@ def test_MovingMNIST():
     input_frames = one_sample[1][0]
     one_frame = input_frames[4, ...]
 
-    plot_spatio_temporal_data(input_frames.squeeze())
+    # plot_spatio_temporal_data(input_frames.squeeze())
 
 
 
