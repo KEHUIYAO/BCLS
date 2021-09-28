@@ -768,6 +768,7 @@ class MovingMNIST:
             images = self.generate_moving_mnist()
         else:
             images = self.dataset[:, idx, ...]
+            images = np.float32(images)
 
         # if self.transform is not None:
         #     images = self.transform(images)
