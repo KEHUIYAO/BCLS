@@ -41,7 +41,7 @@ class BayesianDropout(pl.LightningModule):
 
 
     def forward(self, x):
-        "apply the dropout mask to x"
+        "apply the dropout mask to x, notice that if x and self.m are not the same shape, self.m will be broadcast to have the same shape as x"
         x = x.masked_fill(self.m == 0, 0)
         return x
 
@@ -163,6 +163,71 @@ class CLSTM_cell(pl.LightningModule):
 
         return torch.stack(output_inner), (hy, cy)
 
+
+class ConvRelu(pl.LightningModule):
+    """a cnn layer + a relu layer
+    apply a CNN on the sequences of frames. The same CNN is applied for each frame in the sequence
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dropout_rate):
+        super().__init__()
+        self.dropout_rate = dropout_rate
+        self.conv2d = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.relu_layer = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        """x is a tensor of size (S, B, C, H, W), return a tensor of size (S, B, C_out, H_out, W_out)"""
+        S, B, C, H, W = x.size()
+        x = torch.reshape(x, (-1, C, H, W))
+        x = self.conv2d(x)
+        x = torch.reshape(x, (S, B, x.size(1), x.size(2), x.size(3)))
+
+        # apply dropout (combining CNN version and RNN version of bayesian dropout)
+        if self.dropout_rate == 0:
+            pass
+        else:
+            self.dropout_layer = BayesianDropout(self.dropout_rate,
+                                                 torch.zeros(B, x.size(2), x.size(3), x.size(4)))
+
+        # use the same dropout for each time step thanks to the broadcastable implementation of bayesian dropout layer
+        x = self.dropout_layer(x)
+        x = self.relu_layer(x)
+
+        return x
+
+
+class DeconvRelu(pl.LightningModule):
+    """a deconvolutional nn layer + a relu layer
+      apply a deconvolutional nn on the sequences of frames. The same deconvolutional nn is applied for each frame in the sequence
+     """
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dropout_rate):
+        super().__init__()
+        self.transposeConv2d = nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.relu_layer = nn.ReLU(inplace=True)
+        self.dropout_rate = dropout_rate
+
+    def forward(self, x):
+        """x is a tensor of size (S, B, C, H, W), return a tensor of size (S, B, C_out, H_out, W_out)"""
+        S, B, C, H, W = x.size()
+        x = torch.reshape(x, (-1, C, H, W))
+        x = self.transposeConv2d(x)
+
+        x = torch.reshape(x, (S, B, x.size(1), x.size(2), x.size(3)))
+
+        # apply dropout (combining CNN version and RNN version of bayesian dropout)
+        if self.dropout_rate == 0:
+            pass
+        else:
+            self.dropout_layer = BayesianDropout(self.dropout_rate,
+                                                 torch.zeros(B, x.size(2), x.size(3), x.size(4)))
+
+        # use the same dropout for each time step thanks to the broadcastable implementation of bayesian dropout layer
+        x = self.dropout_layer(x)
+        x = self.relu_layer(x)
+
+        return x
+
+
+
 class ConvCell(pl.LightningModule):
     """The layer from hidden state to output
     apply CNN on the output of multi-layer convlstm to generate the final output
@@ -245,7 +310,51 @@ class Encoder(pl.LightningModule):
 
         return tuple(hidden_states)
 
+class Encoder_pro(pl.LightningModule):
+    """encoding a certain length of sequence
 
+    The Encoder network consists of multiple pairs of (ConvRelu, CLSTM) cells. The input will first go through a convrelu cell, and then to a convlstm cell, and then to another convrelu cell, so on and so forth.
+    """
+
+    def __init__(self, rnns, convrelus):
+        "rnns are a list of convlstm cells, convrelus are a list of convrelu cells"
+        super().__init__()
+        assert len(rnns) == len(convrelus)
+        self.blocks = len(rnns)
+
+        # rnn is a ConvLSTM cell
+        for index, (rnn, convrelu) in enumerate(zip(rnns, convrelus), 1):
+            # index sign from 1
+            setattr(self, 'rnn' + str(index), rnn)
+            setattr(self, 'convrelu' + str(index), convrelu)
+
+    def forward(self, inputs, initial_state):
+        """forward pass of the encoder
+
+        :param inputs: a tensor of shape (B, S, C, H, W)
+        :param initial_state:  Either a list containing [(h, c), ..., (h, c)], where each (h, c) is the final output of a convlstm cell or []
+        :return: a list containing [(h, c), ..., (h, c)], where each (h, c) is the final output of a convlstm cell.
+        """
+
+
+        T = inputs.size(1)
+        hidden_states = []
+
+        if len(initial_state) == 0:
+            initial_state = [[] for i in range(self.blocks)]
+
+        inputs = inputs.transpose(0, 1)  # make sure the input is S, B, C_new, H_new, W_new
+
+        for i in range(1, self.blocks + 1):
+            cur_convrelu = getattr(self, 'convrelu' + str(i))
+            inputs = cur_convrelu(inputs)
+
+            cur_rnn = getattr(self, 'rnn' + str(i))
+
+            inputs, state_stage = cur_rnn(seq_len=T, inputs=inputs, initial_state=initial_state[i-1])
+            hidden_states.append(state_stage)
+
+        return tuple(hidden_states)
 
 
 class Decoder(pl.LightningModule):
@@ -314,6 +423,78 @@ class Decoder(pl.LightningModule):
         return (outputs, hidden_states)
 
 
+class Decoder_pro(pl.LightningModule):
+    """decode a sequence given an initial tuple of hidden states and cell states
+
+    It consists of multiple (convlstm, deconvrelu) pairs and one convcell. The inputs will first pass through an convlstm cell, then pass through a deconvrelu cell, and then to another convlstm cell, so on so forth. Finally, the inputs will go through a convcell and get the output.
+    """
+
+    def __init__(self, rnns, deconvrelus, cnn):
+        "rnns are a list of convlstm cells, deconvrelus are a list of deconvrelu cells and cnn is a convcell"
+        super().__init__()
+        self.blocks = len(rnns)
+
+        for index, (rnn, deconvrelu) in enumerate(zip(rnns, deconvrelus), 1):
+            setattr(self, 'rnn' + str(index), rnn)
+            setattr(self, 'deconvrelu' + str(index), deconvrelu)
+
+        # the output layer is a ConvCell
+        self.output_layer = cnn
+
+
+
+
+    def forward(self, initial_state, seq_len, inputs, additional_time_invariant_inputs):
+        """forward pass of the decoder_pro
+
+        :param seq_len: how long the sequence is decoded to be
+        :param initial_state: a list of tuples [(h, c), ..., (h, c)]
+        :param inputs: a tensor of size (B, S, C, H, W) or []
+        :param additional_time_invariant_inputs: a tensor of size (B, S, C, H, W) or []
+        :return: a tuple of (output, hidden_states), where the output is a tensor of size (B, S, output_channel, H, W), and the hidden_states is a list containing [(h, c), ..., (h, c)], where each (h, c) is the final output of a convlstm cell.
+        """
+
+
+        if len(inputs) > 0:
+            inputs = inputs.transpose(0, 1)  # to S, B, C, H, W
+        cur_deconvrelu = getattr(self, 'deconvrelu1')
+        cur_rnn = getattr(self, 'rnn1')
+        res = []
+        hidden_states = []
+
+        inputs, state_stage = cur_rnn(seq_len=seq_len, inputs=inputs, initial_state=initial_state[0])
+        res.append(inputs)
+        hidden_states.append(state_stage)
+
+        inputs = cur_deconvrelu(inputs)
+
+
+        for i in list(range(1, self.blocks)):
+            cur_rnn = getattr(self, 'rnn' + str(i + 1))
+            cur_deconvrelu = getattr(self, 'deconvrelu' + str(i + 1))
+            inputs, state_stage = cur_rnn(seq_len=seq_len, inputs=inputs, initial_state=initial_state[i])
+            res.append(inputs)
+            hidden_states.append(state_stage)
+            inputs = cur_deconvrelu(inputs)
+
+        # append the channels of all the convlstm cells
+        # inputs = torch.cat(res, dim=2)
+
+        inputs = inputs.transpose(0, 1)  # to B,S,C_sum,H,W
+
+        # additional layer for including time-invariant inputs
+        if len(additional_time_invariant_inputs) > 0:
+            inputs = torch.cat([inputs, additional_time_invariant_inputs], dim=2)
+
+
+        outputs = self.output_layer(inputs)
+
+
+
+        return (outputs, hidden_states)
+
+
+
 class ED(pl.LightningModule):
     """encoder-decoder network
     """
@@ -354,7 +535,49 @@ class ED(pl.LightningModule):
 
         return output_list
 
+class ED_pro(pl.LightningModule):
+    """encoder_pro-decoder_pro network with
+    """
+    def __init__(self, encoder_pro, decoder_pro):
+        super().__init__()
+        self.encoder_pro = encoder_pro
+        self.decoder_pro = decoder_pro
 
+    def forward(self, input_for_encoder, input_for_decoder, additional_time_invariant_input, seq_len):
+        """forward pass of the ED net
+        If it is the prediction task, we first encode a sequence using the encoder network, then pass the output of the encoder to the decoder network and obtain the output.
+        If it is the gap-filling task, for example, the length of the original sequence is 8, and the mask is 11001111, and our goal is to gap-fill the third and the forth time step based on the observed sequence. In this example, an encoder network is used to encode the first two time steps, and pass its output to the decoder, then the decoder network will decode two steps and output both the predictions and hidden states used as the initial state for the next encoder (which is the same encoder as the first one), and the next encoder will continue to encode information until it finds a missing time step in the data and calls for the decoder. In this case, we will have multiple inputs for the encoder and decoder.
+
+
+        :param input_for_encoder: a list of tensors, each tensor is of shape (B, S, C1, H, W)
+        :param input_for_decoder: a list of tensors, each tensor is of shape (B, S, C2, H, W) or []
+        :param additional_time_invariant_input: a list of tensors, each tensor is of shape (B, S, C3, H, W) or []
+        :param seq_len: a list of int, each int tells how long we should decode the sequence to be
+        :return: a list of tensors, each tensor is of shape (B, S, C4, H, W), which is the prediction of the missing sequence
+        """
+        if len(input_for_decoder) == 0:
+            input_for_decoder = [[] for i in range(len(seq_len))]
+
+        if len(additional_time_invariant_input) == 0:
+            additional_time_invariant_input = [[] for i in range(len(seq_len))]
+
+        if len(input_for_encoder) != len(input_for_decoder):
+            input_for_encoder = input_for_encoder[:-1]
+
+
+        # start with an encoder
+        initial_state = []
+        output_list = []
+        for i in range(len(input_for_encoder)):
+            initial_state = self.encoder_pro(input_for_encoder[i], initial_state=initial_state)
+
+            initial_state = initial_state[::-1]  # the hidden state and cell state should be reversed to send to the decoder pro network
+            output, initial_state = self.decoder_pro(initial_state, seq_len[i], input_for_decoder[i], additional_time_invariant_input[i])
+            initial_state = initial_state[::-1]  # the hidden state and cell state should be reversed again to send to the encoder pro network
+
+            output_list.append(output)
+
+        return output_list
 
 
 
@@ -384,6 +607,32 @@ def test_CLSTM_cell():
     CLSTM_layer = CLSTM_cell(shape=(H, W), input_channels=input_channels, filter_size=1, num_features=16, dropout_rate=0.5)
     x = torch.randn(S, B, input_channels, H, W)
     output = CLSTM_layer(S, x, [])  # forward pass
+
+
+def test_ConvRelu():
+    x = torch.randn(2, 10, 3, 64, 64)
+    in_channels = 3
+    out_channels = 64
+    kernel_size = 3
+    stride = 2
+    padding = 1
+    dropout_rate = 0.1
+    conv_relu_layer = ConvRelu(in_channels, out_channels, kernel_size, stride, padding, dropout_rate)
+    y = conv_relu_layer(x)  # y should be (2, 10, 64, 32, 32)
+
+
+def test_DeconvRelu():
+    x = torch.randn(2, 10, 3, 16, 16)
+    in_channels = 3
+    out_channels = 64
+    kernel_size = 4
+    stride = 2
+    padding = 1
+    dropout_rate = 0.1
+    deconv_relu_layer = DeconvRelu(in_channels, out_channels, kernel_size, stride, padding, dropout_rate)
+    y = deconv_relu_layer(x)  # y should be 2, 10, 64, 32, 32
+
+
 
 def test_ConvCell():
     # test whether reshape function works as we want
@@ -439,6 +688,58 @@ def test_decoder():
     decoder_net = Decoder(rnns, cnn)
     y = decoder_net(initial_state=initial_state, seq_len=seq_len, inputs=x1, additional_time_invariant_inputs=x2)
 
+def test_encoder_pro():
+    rnns = [CLSTM_cell(shape=(64, 64), input_channels=16, filter_size=5, num_features=64, dropout_rate=0.5),
+            CLSTM_cell(shape=(32, 32), input_channels=64, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(16,16), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5) ]
+
+    convrelus = [ConvRelu(1, 16, 3, 1, 1, dropout_rate=0.1),
+                 ConvRelu(64, 64, 3, 2, 1, dropout_rate=0.1),
+                 ConvRelu(96, 96, 3, 2, 1, dropout_rate=0.1)]
+
+    encoder_net = Encoder_pro(rnns, convrelus)
+    S = 10
+    B = 2
+    input_channels = 1
+    H = 64
+    W = 64
+    x = torch.randn(B, S, input_channels, H, W)
+    y1 = encoder_net(x, initial_state=[])
+    y2 = encoder_net(x, initial_state=y1)
+
+
+def test_decoder_pro():
+    seq_len = 3
+    B = 2
+    rnns = [CLSTM_cell(shape=(16, 16), input_channels=1, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(32, 32), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(64, 64), input_channels=96, filter_size=5, num_features=64, dropout_rate=0.5)]
+
+    deconvrelus = [DeconvRelu(96, 96, 4, 2, 1, dropout_rate=0.1),
+                   DeconvRelu(96, 96, 4, 2, 1, dropout_rate=0.1),
+                   DeconvRelu(64, 16, 3, 1, 1, dropout_rate=0.1)]
+
+    cnn = ConvCell(in_channels=16, out_channels=1, kernel_size=1, stride=1, padding=0)
+    decoder_net = Decoder_pro(rnns, deconvrelus, cnn)
+
+    h1 = torch.randn(B, 64, 64, 64)
+    c1 = torch.randn(B, 64, 64, 64)
+    h2 = torch.randn(B, 96, 32, 32)
+    c2 = torch.randn(B, 96, 32, 32)
+    h3 = torch.randn(B, 96, 16, 16)
+    c3 = torch.randn(B, 96, 16, 16)
+    initial_state = [(h3, c3), (h2, c2), (h1, c1)]  # reverse
+    y = decoder_net(initial_state=initial_state, seq_len=seq_len, inputs=[], additional_time_invariant_inputs=[])
+
+    # test Decoder with input
+    x = torch.randn(B, seq_len, 1, 16, 16)
+    y = decoder_net(initial_state=initial_state, seq_len=seq_len, inputs=x, additional_time_invariant_inputs=[])
+
+
+
+
+
+
 # test Encoder-Decoder network, gap-filling task
 def test_ED():
     B = 2
@@ -473,6 +774,47 @@ def test_ED():
     output_list = ED_net(input_for_encoder=input_for_encoder, input_for_decoder=input_for_decoder, additional_time_invariant_input=[], seq_len=seq_len)
     y = output_list[0]
 
+# test Encoder_pro and Decoder_pro network
+def test_ED_pro():
+    # encoder pro
+    rnns = [CLSTM_cell(shape=(64, 64), input_channels=16, filter_size=5, num_features=64,
+                       dropout_rate=0.5),
+            CLSTM_cell(shape=(32, 32), input_channels=64, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(16,16), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5) ]
+
+    convrelus = [ConvRelu(1, 16, 3, 1, 1, dropout_rate=0.1),
+                 ConvRelu(64, 64, 3, 2, 1, dropout_rate=0.1),
+                 ConvRelu(96, 96, 3, 2, 1, dropout_rate=0.1)]
+
+    encoder_net = Encoder_pro(rnns, convrelus)
+
+    # input for encoder
+    S = 10
+    B = 2
+    input_channels = 1
+    H = 64
+    W = 64
+    input_for_encoder = [torch.randn(B, S, input_channels, H, W)]
+
+    # decoder_pro
+    rnns = [CLSTM_cell(shape=(16, 16), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(32, 32), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(64, 64), input_channels=96, filter_size=5, num_features=64, dropout_rate=0.5)]
+
+    deconvrelus = [DeconvRelu(96, 96, 4, 2, 1, dropout_rate=0.1),
+                   DeconvRelu(96, 96, 4, 2, 1, dropout_rate=0.1),
+                   DeconvRelu(64, 16, 3, 1, 1, dropout_rate=0.1)]
+
+    cnn = ConvCell(in_channels=16, out_channels=1, kernel_size=1, stride=1, padding=0)
+    decoder_net = Decoder_pro(rnns, deconvrelus, cnn)
+
+    # ED net
+    ED_net = ED_pro(encoder_net, decoder_net)
+    seq_len = [10]
+    output_list = ED_net(input_for_encoder=input_for_encoder, input_for_decoder=[], additional_time_invariant_input=[], seq_len=seq_len)
+
+
+
 if __name__ == "__main__":
     # test_bayesian_dropout()
     # test_CLSTM_cell()
@@ -481,11 +823,3 @@ if __name__ == "__main__":
     # test_decoder()
     # test_ED()
     pass
-
-
-
-
-
-
-
-
