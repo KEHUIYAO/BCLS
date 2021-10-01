@@ -189,7 +189,8 @@ class ConvRelu(pl.LightningModule):
                                                  torch.zeros(B, x.size(2), x.size(3), x.size(4)))
 
         # use the same dropout for each time step thanks to the broadcastable implementation of bayesian dropout layer
-        x = self.dropout_layer(x)
+            x = self.dropout_layer(x)
+
         x = self.relu_layer(x)
 
         return x
@@ -219,9 +220,9 @@ class DeconvRelu(pl.LightningModule):
         else:
             self.dropout_layer = BayesianDropout(self.dropout_rate,
                                                  torch.zeros(B, x.size(2), x.size(3), x.size(4)))
+            # use the same dropout for each time step thanks to the broadcastable implementation of bayesian dropout layer
+            x = self.dropout_layer(x)
 
-        # use the same dropout for each time step thanks to the broadcastable implementation of bayesian dropout layer
-        x = self.dropout_layer(x)
         x = self.relu_layer(x)
 
         return x
@@ -822,4 +823,40 @@ if __name__ == "__main__":
     # test_encoder()
     # test_decoder()
     # test_ED()
-    pass
+    rnns = [CLSTM_cell(shape=(64, 64), input_channels=16, filter_size=5, num_features=64,
+                       dropout_rate=0.5),
+            CLSTM_cell(shape=(32, 32), input_channels=64, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(16,16), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5) ]
+
+    convrelus = [ConvRelu(1, 16, 3, 1, 1, dropout_rate=0.1),
+                 ConvRelu(64, 64, 3, 2, 1, dropout_rate=0.1),
+                 ConvRelu(96, 96, 3, 2, 1, dropout_rate=0.1)]
+
+    encoder_net = Encoder_pro(rnns, convrelus)
+
+    # input for encoder
+    S = 10
+    B = 2
+    input_channels = 1
+    H = 64
+    W = 64
+    input_for_encoder = [torch.randn(B, S, input_channels, H, W)]
+
+    # decoder_pro
+    rnns = [CLSTM_cell(shape=(16, 16), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(32, 32), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(64, 64), input_channels=96, filter_size=5, num_features=64, dropout_rate=0.5)]
+
+    deconvrelus = [DeconvRelu(96, 96, 4, 2, 1, dropout_rate=0.1),
+                   DeconvRelu(96, 96, 4, 2, 1, dropout_rate=0.1),
+                   DeconvRelu(64, 16, 3, 1, 1, dropout_rate=0.1)]
+
+    cnn = ConvCell(in_channels=16, out_channels=1, kernel_size=1, stride=1, padding=0)
+    decoder_net = Decoder_pro(rnns, deconvrelus, cnn)
+
+    # ED net
+    ED_net = ED_pro(encoder_net, decoder_net)
+    seq_len = [10]
+    output_list = ED_net(input_for_encoder=input_for_encoder, input_for_decoder=[], additional_time_invariant_input=[], seq_len=seq_len)
+
+
