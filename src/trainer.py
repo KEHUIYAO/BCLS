@@ -149,15 +149,24 @@ class LightningED2(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         idx, input_for_encoder, input_for_decoder, additional_time_invariant_input, output, seq_len = batch
-        res = []
+        res1 = []
+        res2 = []
         for i in range(self.mc_dropout):
-            pred = self.forward(input_for_encoder, input_for_decoder, additional_time_invariant_input, seq_len)  # B,S,C,H,W
-            pred = torch.cat(pred, dim=1)
-            res.append(pred)
-        pred_avg = torch.stack(res).mean(dim=0)
-        pred_std = torch.stack(res).std(dim=0)
+            pred1, pred2 = self.forward(input_for_encoder, input_for_decoder, additional_time_invariant_input, seq_len)  # B,S,C,H,W
+            pred1 = torch.cat(pred1, dim=1)
+            pred2 = torch.cat(pred2, dim=1)
+            res1.append(pred1)
+            res2.append(pred2)
+        pred_avg1 = torch.stack(res1).mean(dim=0)
+        pred_std1 = torch.stack(res1).std(dim=0)
+        pred_avg2 = torch.stack(res2).mean(dim=0)
+        pred_std2 =  torch.stack(res2).std(dim=0)
         output = torch.cat(output, dim=1)
-        loss = self.loss_function(pred_avg, output)
+        loss1 = self.loss_function(pred_avg1, output)
+        loss2 = self.loss_function(pred_avg2, output)
+        loss3 = self.loss_function(pred_avg1, pred_avg2)
+
+        loss = loss1 + loss2 + loss3
         self.log('validation_loss', loss)
 
         naive_predictor = torch.ones_like(output).permute(3, 4, 0, 1, 2) * output.mean(dim=(-1, -2))
