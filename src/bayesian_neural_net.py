@@ -582,6 +582,45 @@ class ED_pro(pl.LightningModule):
 
 
 
+class Bidirectional_ED_pro(pl.LightningModule):
+    """This class is particularly targeted for missing frames imputation
+    In a forward pass, An ED_pro is used to predict the missing frames; In a backward pass, another ED_pro is used to predict the missing frames.
+    """
+    def __init__(self, ED_pro_forward, ED_pro_backward):
+        super().__init__()
+        self.ED_pro_forward = ED_pro_forward
+        self.ED_pro_backward = ED_pro_backward
+
+
+    def forward(self, input_for_encoder, input_for_decoder, additional_time_invariant_input, seq_len):
+        """forward pass of the Bidirectional_ED_pro net
+         It's particularly designed to impute the missing frame. We should have both inputs in the beginning and in the end, and predict the output in the middle twice, one by forward pass ED_pro, another one by backward pass ED_pro.
+        :param input_for_encoder: a list of tensors, each tensor is of shape (B, S, C1, H, W)
+        :param input_for_decoder: a list of tensors, each tensor is of shape (B, S, C2, H, W) or []
+        :param additional_time_invariant_input: a list of tensors, each tensor is of shape (B, S, C3, H, W) or []
+        :param seq_len: a list of int, each int tells how long we should decode the sequence to be
+        :return: two list of tensors, each tensor is of shape (B, S, C4, H, W), which is the prediction of the missing sequence from the forward pass and from the backward pass
+        """
+        forward_prediction = self.ED_pro_forward(input_for_encoder, input_for_decoder, additional_time_invariant_input, seq_len)
+
+        # reverse the input_for_encoder
+        input_for_encoder = input_for_encoder[::-1]
+        input_for_encoder = [torch.flip(x,[1]) for x in input_for_encoder]
+        input_for_decoder = input_for_decoder[::-1]
+        input_for_decoder = [torch.flip(x,[1]) for x in input_for_decoder]
+        additional_time_invariant_input = additional_time_invariant_input[::-1]
+        additional_time_invariant_input = [torch.flip(x,[1]) for x in additional_time_invariant_input]
+        seq_len = seq_len[::-1]
+
+        backward_prediction = self.ED_pro_backward(input_for_encoder, input_for_decoder, additional_time_invariant_input, seq_len)
+
+        # make the backward pass prediction in the forward order
+        backward_prediction = backward_prediction[::-1]
+        backward_prediction = [torch.flip(x, [1]) for x in backward_prediction]
+
+        return (forward_prediction, backward_prediction)
+
+
 
 
 
@@ -815,14 +854,8 @@ def test_ED_pro():
     output_list = ED_net(input_for_encoder=input_for_encoder, input_for_decoder=[], additional_time_invariant_input=[], seq_len=seq_len)
 
 
-
-if __name__ == "__main__":
-    # test_bayesian_dropout()
-    # test_CLSTM_cell()
-    # test_ConvCell()
-    # test_encoder()
-    # test_decoder()
-    # test_ED()
+def test_Bidirectional_ED_pro():
+    # encoder pro
     rnns = [CLSTM_cell(shape=(64, 64), input_channels=16, filter_size=5, num_features=64,
                        dropout_rate=0.5),
             CLSTM_cell(shape=(32, 32), input_channels=64, filter_size=5, num_features=96, dropout_rate=0.5),
@@ -840,7 +873,7 @@ if __name__ == "__main__":
     input_channels = 1
     H = 64
     W = 64
-    input_for_encoder = [torch.randn(B, S, input_channels, H, W)]
+    input_for_encoder = [torch.randn(B, S, input_channels, H, W), torch.randn(B, S, input_channels, H, W)]
 
     # decoder_pro
     rnns = [CLSTM_cell(shape=(16, 16), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5),
@@ -855,8 +888,63 @@ if __name__ == "__main__":
     decoder_net = Decoder_pro(rnns, deconvrelus, cnn)
 
     # ED net
-    ED_net = ED_pro(encoder_net, decoder_net)
+    ED_net_forward = ED_pro(encoder_net, decoder_net)
+    ED_net_backward = ED_pro(encoder_net, decoder_net)
+
+
+    # bidirectional ED_pro
+    model = Bidirectional_ED_pro(ED_net_forward, ED_net_backward)
     seq_len = [10]
-    output_list = ED_net(input_for_encoder=input_for_encoder, input_for_decoder=[], additional_time_invariant_input=[], seq_len=seq_len)
+    forward_pass_output, backward_pass_output = model(input_for_encoder=input_for_encoder, input_for_decoder=[], additional_time_invariant_input=[], seq_len=seq_len)
 
 
+
+if __name__ == "__main__":
+    # test_bayesian_dropout()
+    # test_CLSTM_cell()
+    # test_ConvCell()
+    # test_encoder()
+    # test_decoder()
+    # test_ED()
+    # test_ED_pro()
+    # encoder pro
+    rnns = [CLSTM_cell(shape=(64, 64), input_channels=16, filter_size=5, num_features=64,
+                       dropout_rate=0.5),
+            CLSTM_cell(shape=(32, 32), input_channels=64, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(16,16), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5) ]
+
+    convrelus = [ConvRelu(1, 16, 3, 1, 1, dropout_rate=0.1),
+                 ConvRelu(64, 64, 3, 2, 1, dropout_rate=0.1),
+                 ConvRelu(96, 96, 3, 2, 1, dropout_rate=0.1)]
+
+    encoder_net = Encoder_pro(rnns, convrelus)
+
+    # input for encoder
+    S = 10
+    B = 2
+    input_channels = 1
+    H = 64
+    W = 64
+    input_for_encoder = [torch.randn(B, S, input_channels, H, W), torch.randn(B, S, input_channels, H, W)]
+
+    # decoder_pro
+    rnns = [CLSTM_cell(shape=(16, 16), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(32, 32), input_channels=96, filter_size=5, num_features=96, dropout_rate=0.5),
+            CLSTM_cell(shape=(64, 64), input_channels=96, filter_size=5, num_features=64, dropout_rate=0.5)]
+
+    deconvrelus = [DeconvRelu(96, 96, 4, 2, 1, dropout_rate=0.1),
+                   DeconvRelu(96, 96, 4, 2, 1, dropout_rate=0.1),
+                   DeconvRelu(64, 16, 3, 1, 1, dropout_rate=0.1)]
+
+    cnn = ConvCell(in_channels=16, out_channels=1, kernel_size=1, stride=1, padding=0)
+    decoder_net = Decoder_pro(rnns, deconvrelus, cnn)
+
+    # ED net
+    ED_net_forward = ED_pro(encoder_net, decoder_net)
+    ED_net_backward = ED_pro(encoder_net, decoder_net)
+
+
+    # bidirectional ED_pro
+    model = Bidirectional_ED_pro(ED_net_forward, ED_net_backward)
+    seq_len = [10]
+    forward_pass_output, backward_pass_output = model(input_for_encoder=input_for_encoder, input_for_decoder=[], additional_time_invariant_input=[], seq_len=seq_len)
