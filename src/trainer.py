@@ -128,10 +128,13 @@ class LightningED2(pl.LightningModule):
         loss2 = self.loss_function(pred2, output)
 
         # discrepancy loss
-        loss3 = self.loss_function(pred1, pred2)
+        # loss3 = self.loss_function(pred1, pred2)
 
         # total loss
-        loss = loss1 + loss2 + loss3
+        #loss = loss1 + loss2 + loss3
+        loss = loss1 + loss2
+        #loss = loss1
+        
         self.log('train_loss', loss)
         return loss
 
@@ -164,9 +167,12 @@ class LightningED2(pl.LightningModule):
         output = torch.cat(output, dim=1)
         loss1 = self.loss_function(pred_avg1, output)
         loss2 = self.loss_function(pred_avg2, output)
-        loss3 = self.loss_function(pred_avg1, pred_avg2)
+        # loss3 = self.loss_function(pred_avg1, pred_avg2)
 
-        loss = loss1 + loss2 + loss3
+        #loss = loss1 + loss2 + loss3
+        loss = loss1 + loss2
+        #loss = loss1
+        
         self.log('validation_loss', loss)
 
         naive_predictor = torch.ones_like(output).permute(3, 4, 0, 1, 2) * output.mean(dim=(-1, -2))
