@@ -1,8 +1,8 @@
 universe = vanilla
-executable = submit.sh
+executable = submit_moving_mnist_pro.sh
 output = $(Cluster)_$(Process).out
 
-transfer_input_files = environment.yml, ../src/different_scenarios/moving_mnist.py, ../src/bayesian_neural_net.py, ../src/simulation_dataset.py, ../src/trainer.py, ../src/simulation_dataset_datamodule.py, ../data/train-images-idx3-ubyte.gz, ../src/visualization.py, moving_mnist.ckpt
+transfer_input_files = environment.yml, ../src/different_scenarios/moving_mnist_pro.py, ../src/bayesian_neural_net.py, ../src/simulation_dataset.py, ../src/trainer.py, ../src/simulation_dataset_datamodule.py, ../data/train-images-idx3-ubyte.gz, ../src/visualization.py
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 
